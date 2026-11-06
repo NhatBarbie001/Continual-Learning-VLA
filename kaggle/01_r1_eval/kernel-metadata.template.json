@@ -1,0 +1,15 @@
+{
+  "id": "__USER__/ffi26-r1-eval",
+  "title": "FFI26 R1 Eval",
+  "code_file": "01_r1_eval.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

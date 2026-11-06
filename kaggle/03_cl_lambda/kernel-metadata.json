@@ -1,0 +1,15 @@
+{
+  "id": "nhatloiidinhhn3/ffi26-cl-lambda",
+  "title": "FFI26 CL Lambda",
+  "code_file": "03_cl_lambda.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

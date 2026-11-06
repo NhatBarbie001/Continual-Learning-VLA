@@ -1,0 +1,15 @@
+{
+  "id": "nhatloiidinhhn3/ffi26-cl-seed2-ext",
+  "title": "FFI26 CL Seed2 Ext",
+  "code_file": "03_cl_seed2_ext.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_internet": "true",
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
