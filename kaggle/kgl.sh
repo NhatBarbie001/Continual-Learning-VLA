@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Drive Kaggle kernels from the local terminal.
-# Usage: bash code/kaggle/kgl.sh {whoami|quota|push|status|logs|output} [kernel-folder]
+# Usage: bash kaggle/kgl.sh {whoami|quota|push|status|logs|output} [kernel-folder]
 #   push    <dir> [sec]  fill username into kernel-metadata.json and run on GPU T4 x2
 #   status  <dir>  state of the latest run
 #   logs    <dir>  execution log of the latest run
-#   output  <dir>  download outputs to results/<dir-name>/
+#   output  <dir>  download outputs to results/<dir-name>/ (or $RESULTS_DIR/<dir-name>/)
 set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"   # repo root (this file is code/kaggle/kgl.sh)
+CODE="$(cd "$(dirname "$0")/.." && pwd)"
+# outputs go to ../results when this folder sits inside the full project, else to ./results
+RESULTS="${RESULTS_DIR:-$( [ -d "$CODE/../results" ] && echo "$CODE/../results" || echo "$CODE/results" )}"
 export PYTHONIOENCODING=utf-8
 
 user() { kaggle config view 2>/dev/null | sed -n 's/^- username: //p' | head -1; }
@@ -33,7 +35,7 @@ case "$cmd" in
   logs)   prepare "$dir"; kaggle kernels logs "$(slug "$dir")" ;;
   output)
     prepare "$dir"
-    out="$ROOT/results/$(basename "$dir")"; mkdir -p "$out"
+    out="$RESULTS/$(basename "$dir")"; mkdir -p "$out"
     kaggle kernels output "$(slug "$dir")" -p "$out"
     echo "Saved to $out" ;;
   *) sed -n 2,8p "$0"; exit 1 ;;

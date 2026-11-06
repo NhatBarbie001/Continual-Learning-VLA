@@ -2,12 +2,12 @@
 
 Usage: python select_episodes.py libero_goal_episodes.json --new-task 3 [--replay K]
 
-Prints three lines (read by code/scripts/02_train_cl.sh):
+Prints three lines (read by scripts/02_train_cl.sh):
   1. the episode list for --dataset.episodes (new task, plus the first K episodes of each old task when K > 0)
   2. the old-task instructions joined with "|" (CIVD_OLD_TASKS)
   3. the dataset revision the map was built from (lerobot/libero @ a1aaacb...)
 
-The map (code/kaggle/libero_goal_episodes.json) was built from the per-frame `task_index` of lerobot/libero at that
+The map (kaggle/libero_goal_episodes.json) was built from the per-frame `task_index` of lerobot/libero at that
 revision; the Kaggle notebooks also assert every instruction against LIBERO's own task list at run time.
 """
 import argparse

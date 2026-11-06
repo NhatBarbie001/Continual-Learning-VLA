@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Part 4 (Improve): one continual-learning stage. Fine-tune the stage-0 model on ONE new LIBERO-Goal task.
 #
-# Usage: bash code/scripts/02_train_cl.sh METHOD NAME [LAMBDA]
+# Usage: bash scripts/02_train_cl.sh METHOD NAME [LAMBDA]
 #   METHOD  seqft    M0  plain fine-tune on the new task
 #           civd     M3  CIVD: + λ·distillation on new-task observations paired with OLD instructions
 #           civdnew  M3b ablation: distillation paired with the NEW instruction (LwF-style)

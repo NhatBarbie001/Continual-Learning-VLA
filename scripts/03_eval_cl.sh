@@ -2,7 +2,7 @@
 # Part 4: evaluate a CL checkpoint on the new task and every old LIBERO-Goal task (10 episodes each, seed 1000,
 # n_action_steps 10, i.e. the same initial states as stage 0 / R1b), then write the per-run summary.
 #
-# Usage: bash code/scripts/03_eval_cl.sh NAME [NAME ...]
+# Usage: bash scripts/03_eval_cl.sh NAME [NAME ...]
 #   NAME  run name(s) trained by 02_train_cl.sh; the newest checkpoint of each is evaluated
 # Env: NEW_TASK (3), OLD_TASKS ("8 4 0 1 5 7 9 2 6"), EPISODES (10), GPU, OUT_ROOT.
 set -uo pipefail

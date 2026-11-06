@@ -1,6 +1,6 @@
 """Generate the Kaggle notebooks in this folder from one shared setup recipe.
 
-Usage: python code/kaggle/build_notebooks.py
+Usage: python kaggle/build_notebooks.py
 Writes 00_smoke_test/00_smoke_test.ipynb and 01_r1_eval/01_r1_eval.ipynb.
 """
 

@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 # Shared settings for the run scripts. Source it; do not run it.
-# Every value can be overridden from the environment, e.g. `GPU=1 SEED=2000 bash code/scripts/run_cl.sh ...`.
+# Every value can be overridden from the environment, e.g. `GPU=1 SEED=2000 bash scripts/run_cl.sh ...`.
 
 CODE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_DIR="$(cd "$CODE_DIR/.." && pwd)"
 
 : "${VENV:=/tmp/venv}"                       # Python 3.12 venv created by 00_setup_env.sh
 : "${LEROBOT_DIR:=/tmp/lerobot}"
 : "${LEROBOT_COMMIT:=ba83e4cf43737e2665be0aafcb5f513b83c7d0f3}"
-: "${OUT_ROOT:=$REPO_DIR/outputs}"           # where checkpoints, eval dirs and summaries go
+: "${OUT_ROOT:=$CODE_DIR/outputs}"           # where checkpoints, eval dirs and summaries go
 : "${GPU:=0}"                                # CUDA device for the policy
 : "${EGL_DEVICE:=0}"                         # MuJoCo EGL device (Kaggle exposes only 0)
 

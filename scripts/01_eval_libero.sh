@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Part 2 (Reproduce): evaluate a SmolVLA checkpoint on LIBERO, one lerobot-eval call per task.
 #
-# Usage: bash code/scripts/01_eval_libero.sh POLICY SUITE [TASKS] [NAS]
+# Usage: bash scripts/01_eval_libero.sh POLICY SUITE [TASKS] [NAS]
 #   POLICY  lerobot/smolvla_libero (R1b, paper config) | HuggingFaceVLA/smolvla_libero (R1) | a local pretrained_model dir
 #   SUITE   libero_spatial | libero_object | libero_goal | libero_10
 #   TASKS   task ids, default "0 1 2 3 4 5 6 7 8 9"
@@ -9,9 +9,9 @@
 # Env: EPISODES (10), BATCH (3 parallel envs), SEED (1000), TASK_TIMEOUT (2700 s), GPU, OUT_ROOT.
 #
 # Examples (the runs in the report):
-#   R1b, 4 suites:  for s in libero_spatial libero_object libero_goal libero_10; do bash code/scripts/01_eval_libero.sh lerobot/smolvla_libero $s; done
-#   R1, Goal:       bash code/scripts/01_eval_libero.sh HuggingFaceVLA/smolvla_libero libero_goal "" 0
-#   R3, chunks:     for n in 1 10 50; do bash code/scripts/01_eval_libero.sh HuggingFaceVLA/smolvla_libero libero_goal "0 9" $n; done
+#   R1b, 4 suites:  for s in libero_spatial libero_object libero_goal libero_10; do bash scripts/01_eval_libero.sh lerobot/smolvla_libero $s; done
+#   R1, Goal:       bash scripts/01_eval_libero.sh HuggingFaceVLA/smolvla_libero libero_goal "" 0
+#   R3, chunks:     for n in 1 10 50; do bash scripts/01_eval_libero.sh HuggingFaceVLA/smolvla_libero libero_goal "0 9" $n; done
 set -uo pipefail
 source "$(dirname "$0")/common.sh"
 POLICY=${1:?policy}; SUITE=${2:?suite}; TASKS=${3:-}; NAS=${4:-10}

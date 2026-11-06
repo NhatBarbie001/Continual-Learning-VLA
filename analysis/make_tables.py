@@ -1,6 +1,6 @@
 """Build machine-readable result tables and the CL figure from the downloaded Kaggle outputs.
 
-Usage: python code/analysis/make_tables.py
+Usage: python analysis/make_tables.py
 Reads results/<run>/cl/summary.md (written by the 03_cl* notebooks) and the R1/R1b numbers below,
 writes results/tables/*.csv and results/figures/cl_per_task.png.
 """
@@ -13,7 +13,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-HERE = Path(__file__).resolve().parents[2] / "results"   # repo/results
+import os
+# results/ of the full project (sibling of this code folder), or $RESULTS_DIR
+_code = Path(__file__).resolve().parents[1]
+HERE = Path(os.environ.get("RESULTS_DIR") or (_code.parent / "results" if (_code.parent / "results").is_dir() else _code / "results"))
 TAB, FIG = HERE / "tables", HERE / "figures"
 TAB.mkdir(exist_ok=True)
 FIG.mkdir(exist_ok=True)

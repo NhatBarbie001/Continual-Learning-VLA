@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install everything needed to run SmolVLA + LIBERO (≈ 10 min). Tested on Kaggle (Ubuntu, 2× T4, CUDA 12).
-# Usage: bash code/scripts/00_setup_env.sh
+# Usage: bash scripts/00_setup_env.sh
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 
