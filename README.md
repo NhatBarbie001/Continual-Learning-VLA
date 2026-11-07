@@ -49,10 +49,10 @@ L = L_flow-matching(new-task batch)
 | Experiment | Result |
 |---|---|
 | **Reproduce** SmolVLA (`lerobot/smolvla_libero`, n_action_steps 10) | **83.3 %** average vs 87.3 % in the paper. Goal 88 (paper 92) and Long 76 (71) match; Spatial 82 (90) and Object 87 (96) are 8–9 pp lower |
-| **One CL stage** (stage-0 model learns LIBERO-Goal task 3 for 1200 steps; 9 old tasks evaluated; 3 training seeds) | Old-task success 91 % → **57 % with SeqFT** vs **88 % with CIVD (λ = 0.1)**. Forgetting 34.1 ± 2.8 vs **3.0 ± 2.3 pp** (Fisher p = 3·10⁻¹⁶). **New task: 24/30 for both**, so CIVD keeps the full new-task gain |
-| Strength of the constraint | Retention is flat in λ (74–81/90 from λ = 1 to 0.03). At λ = 1 the new task is not learned (16/30); λ = 0.1, chosen on seed 1000, held on two fresh seeds |
+| **One CL stage** (stage-0 model learns LIBERO-Goal task 3 for 1200 steps; 9 old tasks evaluated; 3 training seeds) | Old-task success 91 % → **57 % with SeqFT** vs **88 % with CIVD (λ = 0.1)**. Forgetting 34.1 ± 2.8 vs **3.0 ± 2.3 pp** (Fisher p = 3·10⁻¹⁶). **Target task: 24/30 for both**, so CIVD keeps the full target-task gain |
+| Strength of the constraint | Retention is flat in λ (74–81/90 from λ = 1 to 0.03). At λ = 1 the target task is not learned (16/30); λ = 0.1, chosen on seed 1000, held on two fresh seeds |
 | Ablation: distil with the **new** instruction instead (LwF-style) | Forgets like SeqFT over 2 seeds (102 vs 100/180), far more than CIVD (153/180, p = 4·10⁻⁹). The cross-instruction pairing is the active ingredient |
-| Against replay | Storing 1 or 5 demos per old task also retains old tasks (Replay-1 78/90, Replay-5 79 · 76) but gives no new-task gain (6–7/10). Exemplar-free CIVD λ = 0.1 matches Replay-5's retention and keeps the gain |
+| Against replay | Storing 1 or 5 demos per old task also retains old tasks (Replay-1 78/90, Replay-5 79 · 76) but gives no target-task gain (6–7/10). Exemplar-free CIVD λ = 0.1 matches Replay-5's retention and keeps the gain |
 | Cost of CIVD | 9 stored instruction strings, 1.8× training time per step, +2.1 GB GPU memory (teacher); inference unchanged |
 
 ![Success per task after one CL stage (mean of 3 seeds)](assets/cl_per_task.png)
@@ -99,14 +99,14 @@ After SeqFT, forgetting looks like **motor degradation, not behaviour overwrite*
 
 Setup:
 - **Stage 0:** `lerobot/smolvla_libero`, which already knows all 10 Goal tasks.
-- **Stage 1:** learn Goal task 3 (36 demos) for 1200 steps × batch 16, training only the action expert.
-- **Evaluation:** the new task and all 9 old tasks.
+- **Stage 1:** fine-tune on the **target task**, Goal task 3 (36 demos), for 1200 steps × batch 16, training only the action expert. The base model already knows this task but scores only 6/10 on it, so the stage tests forgetting while improving one known task; a truly unseen task (base model trained on 9 tasks) is future work.
+- **Evaluation:** the target task and all 9 old tasks.
 
 Cells are successes out of 30: 3 training seeds (1000, 2000, 3000) × 10 episodes.
 
 | Task | Stage 0 (/10) | SeqFT | CIVD λ = 1 | **CIVD λ = 0.1** | p (λ = 0.1 vs SeqFT) |
 |---|---|---|---|---|---|
-| **3 (new)** drawer + bowl inside | 6 | **24** | 16 | **24** | 1 |
+| **3 (target)** drawer + bowl inside | 6 | **24** | 16 | **24** | 1 |
 | 8 bowl → plate | 10 | 12 | 29 | **30** | 2·10⁻⁷ |
 | 4 bowl → cabinet top | 9 | 18 | 30 | **30** | 1·10⁻⁴ |
 | 6 cream cheese → bowl | 7 | 3 | 17 | **18** | 9·10⁻⁵ |
@@ -118,20 +118,20 @@ Cells are successes out of 30: 3 training seeds (1000, 2000, 3000) × 10 episode
 | 5 push plate → stove | 10 | 24 | 28 | **29** | 0.10 |
 | **Old tasks** (per seed) | **82/90** | 154/270 (49 · 51 · 54) | 228/270 (74 · 79 · 75) | **238/270 (77 · 80 · 81)** | **3·10⁻¹⁶** |
 | **Forgetting** (pp) ↓ | | 34.1 ± 2.8 | 6.7 ± 2.9 | **3.0 ± 2.3** | |
-| **New-task gain** (pp) ↑ | | **+20 ± 10** | −7 ± 12 | **+20 ± 10** | |
+| **Target-task gain** (pp) ↑ | | **+20 ± 10** | −7 ± 12 | **+20 ± 10** | |
 
 Forgetting is stage-0 success minus success after the stage, averaged over the 9 old tasks. ± is the std over seeds. p is a two-sided Fisher exact test on pooled episodes.
 
-- **CIVD with λ = 0.1 removes about 90 % of the forgetting and learns the new task as well as SeqFT.** It is better than SeqFT in every seed.
-- **λ = 1 retains about as well but does not learn the new task.** This is the stability–plasticity trade-off, set by λ.
-- **About the choice of λ.** λ = 0.1 was picked from a sweep on seed 1000. Seeds 2000 and 3000 were run afterwards as a fresh confirmation: 7 and 8 on the new task, 80 and 81/90 on old tasks.
+- **CIVD with λ = 0.1 removes about 90 % of the forgetting and learns the target task as well as SeqFT.** It is better than SeqFT in every seed.
+- **λ = 1 retains about as well but does not learn the target task.** This is the stability–plasticity trade-off, set by λ.
+- **About the choice of λ.** λ = 0.1 was picked from a sweep on seed 1000. Seeds 2000 and 3000 were run afterwards as a fresh confirmation: 7 and 8 on the target task, 80 and 81/90 on old tasks.
 - **Forgetting under SeqFT hits the object-placement tasks** (2, 4, 6, 8, 9). The drawer and stove tasks hold.
 
 ### 4. Ablation, λ sweep and replay baselines
 
-One run of 1200 steps per value; seeds are listed in the second column. Seed-1000 references: SeqFT 7 (new) / 49 (old), CIVD λ = 1 4 / 74.
+One run of 1200 steps per value; seeds are listed in the second column. Seed-1000 references: SeqFT 7 (target) / 49 (old), CIVD λ = 1 4 / 74.
 
-| Method | Seeds | Stored from old tasks | New task / 10 | Old tasks / 90 |
+| Method | Seeds | Stored from old tasks | Target task / 10 | Old tasks / 90 |
 |---|---|---|---|---|
 | Stage 0 | — | — | 6 | 82 |
 | CIVD λ = 1 · 0.3 · **0.1** · 0.03 | 1000 | 9 instruction strings | 4 · 6 · **9** · 6 | 74 · 74 · **77** · 77 |
@@ -142,11 +142,11 @@ One run of 1200 steps per value; seeds are listed in the second column. Seed-100
 | CIVD (λ = 1) + Replay-1 | 1000 · 2000 | 9 demos + 9 strings | 6 · 5 | 82 · 82 |
 
 - **Cross-instruction pairing is what works (2 seeds).** CIVD w/o cross-instruction has the same teacher, λ and cost as CIVD, but it forgets like SeqFT: 102 vs 100/180 (p = 0.92), against 153/180 for CIVD (p = 4·10⁻⁹).
-- **Retention is flat in λ:** 74–81/90 from λ = 1 down to λ = 0.03. The new-task score is noisier (4, 6, 9, 6), which is why λ = 0.1 was rerun on two more seeds.
+- **Retention is flat in λ:** 74–81/90 from λ = 1 down to λ = 0.03. The target-task score is noisier (4, 6, 9, 6), which is why λ = 0.1 was rerun on two more seeds.
 - **Replay retains but does not learn.**
   - Even 1 stored demo per old task keeps 78/90, so CIVD + Replay-1 ≈ Replay-5 is mostly a replay effect (Replay-1 vs CIVD + Replay-1: 78 vs 82, p = 0.48).
-  - All replay runs stayed at 5–7/10 on the new task.
-  - Exemplar-free CIVD λ = 0.1 matches Replay-5's retention (157 vs 155/180 on seeds 1000 · 2000, p = 0.88) and keeps the new-task gain.
+  - All replay runs stayed at 5–7/10 on the target task.
+  - Exemplar-free CIVD λ = 0.1 matches Replay-5's retention (157 vs 155/180 on seeds 1000 · 2000, p = 0.88) and keeps the target-task gain.
 
 ### 5. Resource cost (one T4, 1200 steps, batch 16, mean of 3 seeds)
 
@@ -170,12 +170,12 @@ scripts/                  run every experiment on a Linux machine with an NVIDIA
   00_setup_env.sh         install system libs, a Python 3.12 venv, LeRobot @ ba83e4c with [smolvla,libero]
   01_eval_libero.sh       Reproduce: evaluate a checkpoint on a LIBERO suite
   02_train_cl.sh          Improve: one CL stage with SeqFT / CIVD / CIVD w/o cross-instruction / Replay / CIVD + Replay
-  03_eval_cl.sh           Improve: evaluate CL checkpoints on the new task and all old tasks
+  03_eval_cl.sh           Improve: evaluate CL checkpoints on the target task and all old tasks
   run_cl.sh               02 + 03 end to end; its header lists the command of every reported run
 analysis/
-  select_episodes.py      training episode list (new task, optionally K replayed demos per old task)
+  select_episodes.py      training episode list (target task, optionally K replayed demos per old task)
   summarize_eval.py       per-task success with Wilson 95 % CI for one suite
-  summarize_cl.py         one CL stage: success per task, new-task gain, forgetting vs stage 0
+  summarize_cl.py         one CL stage: success per task, target-task gain, forgetting vs stage 0
   compare_runs.py         pool runs across seeds, Fisher exact tests, forgetting mean ± std
   make_tables.py          result tables (CSV) and the figure above
   make_demo.py            side-by-side demo video (SeqFT vs CIVD, same initial states) from the eval rollouts
@@ -195,7 +195,7 @@ docs/pipeline.md          SmolVLA pipeline traced through the LeRobot source (fi
 
 | Name in the report | `MODE` in the code | What it does |
 |---|---|---|
-| SeqFT (fine-tuning) | `seqft` | Plain fine-tuning on the new task |
+| SeqFT (fine-tuning) | `seqft` | Plain fine-tuning on the target task |
 | CIVD | `civd` | SeqFT plus distillation on new-task observations paired with old instructions |
 | CIVD w/o cross-instruction | `civdnew` | Ablation: same as CIVD, but distilled with the new task's own instruction (LwF-style) |
 | Replay-1 / Replay-5 | `er1` / `er5` | SeqFT plus 1 / 5 stored demos per old task |
@@ -215,7 +215,7 @@ bash scripts/00_setup_env.sh                                        # ≈ 10 min
 # Reproduce (≈ 1–1.5 h per suite on one T4)
 bash scripts/01_eval_libero.sh lerobot/smolvla_libero libero_goal   # → outputs/eval/smolvla_libero_nas10/libero_goal/summary.md
 
-# One CL stage: stage-0 model → new Goal task 3, 1200 steps
+# One CL stage: stage-0 model → target task 3, 1200 steps
 bash scripts/run_cl.sh seqft m0                                     # SeqFT, ≈ 1.6 h + 1 h eval
 bash scripts/run_cl.sh civd  m3 1.0                                 # CIVD,  ≈ 3 h + 1 h eval
 python analysis/summarize_cl.py outputs/cl --runs m0 m3             # comparison table

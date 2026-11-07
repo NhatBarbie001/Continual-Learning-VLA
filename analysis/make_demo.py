@@ -35,16 +35,16 @@ def symbol_font(size):
     return ImageFont.truetype(str(p), size) if p.exists() else font(size, True)
 
 
-# (task id, instruction, episode, caption). Episodes picked where the outcomes differ (old tasks) or agree (new task).
+# (task id, instruction, episode, caption). Episodes picked where the outcomes differ (old tasks) or agree (target task).
 CLIPS = [
     (8, "put the bowl on the plate", 0,
      "Old task. SeqFT carries the bowl to the plate but never releases it: forgetting is a motor skill, not the goal."),
     (6, "put the cream cheese in the bowl", 1,
-     "Old task. After fine-tuning on the new task, SeqFT no longer completes the placement; CIVD still does."),
+     "Old task. After fine-tuning on the target task, SeqFT no longer completes the placement; CIVD still does."),
     (2, "put the wine bottle on top of the cabinet", 2,
      "Old task. CIVD stored no old demonstrations, only the 9 old instruction strings."),
     (3, "open the top drawer and put the bowl inside", 1,
-     "New task (learned in this stage). Both methods learn it: CIVD keeps the new-task gain."),
+     "Target task (the only task in the fine-tuning data; base model 6/10). Both methods improve it: CIVD keeps the gain."),
 ]
 
 
@@ -129,7 +129,7 @@ def main():
     hold(card([("Continual learning without forgetting", 44, True, INK),
                ("SmolVLA (450M) on LIBERO-Goal · Lôi Đình Nhất · FFI26", 24, False, MUTED),
                ("", 12, False, INK),
-               ("Stage 0: the model knows 10 tasks. Stage 1: it is fine-tuned on one new task (1200 steps).", 24, False, INK),
+               ("Stage 0: the model knows 10 tasks. Stage 1: it is fine-tuned on one target task (1200 steps).", 24, False, INK),
                ("Left: plain fine-tuning (SeqFT). Right: CIVD, which distils the previous model's velocity", 24, False, INK),
                ("field on new-task observations paired with OLD instructions, with no stored old demos.", 24, False, INK),
                ("Both panels start from the same initial state.", 24, True, INK)]), 6)
@@ -138,7 +138,7 @@ def main():
         print(f"task {task} ep {ep}: SeqFT {'ok' if sa else 'fail'} | CIVD {'ok' if sb else 'fail'}")
     hold(card([("Over all 9 old tasks, 3 training seeds × 10 episodes", 34, True, INK),
                ("", 10, False, INK),
-               ([(90, ""), (520, "old tasks"), (760, "new task (stage 0: 6 / 10)")], 22, False, MUTED),
+               ([(90, ""), (520, "old tasks"), (760, "target task (stage 0: 6 / 10)")], 22, False, MUTED),
                ([(90, "Stage 0"), (520, "91 %"), (760, "—")], 28, False, MUTED),
                ([(90, "SeqFT"), (520, "57 %"), (760, "24 / 30")], 28, False, SEQ),
                ([(90, "CIVD, λ = 0.1 (mine)"), (520, "88 %"), (760, "24 / 30")], 28, True, CIVD),

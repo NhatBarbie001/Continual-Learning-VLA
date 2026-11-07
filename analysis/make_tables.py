@@ -122,7 +122,7 @@ if main:
     ax.axvline(0.5, color=MUTED, lw=0.8, ls=(0, (3, 3)))
     ax.set_xticks(x)
     import textwrap
-    ax.set_xticklabels([("NEW · " if t == 3 else "") + f"task {t}\n" + "\n".join(textwrap.wrap(GOAL[t], 13)) for t in order],
+    ax.set_xticklabels([("TARGET · " if t == 3 else "") + f"task {t}\n" + "\n".join(textwrap.wrap(GOAL[t], 13)) for t in order],
                        fontsize=7.5, color=INK)
     for i, t in enumerate(order):   # zero-height bars are invisible: label them
         for j, m in enumerate(NAMES, start=1):
