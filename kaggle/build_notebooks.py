@@ -478,7 +478,8 @@ OLD_TASKS = [0, 1, 8]          # old tasks at 100 % in R1b, evaluated after the 
 STEPS, BATCH = 600, 16
 CIVD_LAMBDA, CIVD_DISTILL_BS = 1.0, 4
 TRAIN_SEED = 1000              # training seed; evaluation always uses seed 1000 (same initial states as stage 0)
-# one run per GPU: (name, mode, lambda); mode = seqft | civd (old instructions) | civdnew (M3b: new instruction)
+# one run per GPU: (name, mode, lambda[, train seed]); mode = seqft | civd (old instructions) | civdnew (M3b: new
+# instruction) | erK (SeqFT + K replayed demos per old task) | civderK (CIVD + K replayed demos); seed defaults to TRAIN_SEED
 RUNS = [("m0", "seqft", 0.0), ("m3", "civd", CIVD_LAMBDA)]
 EVAL_EPISODES, NAS = 10, 10    # same as R1b
 SMOKE_STEPS = 3                # short CIVD run first: distill loss must be ~0 at step 1 (student == teacher)
@@ -486,7 +487,7 @@ open("/tmp/params.sh", "w").write(
     f'SUITE={SUITE}\\nBASE={BASE}\\nNEW_TASK={NEW_TASK}\\nOLD_TASKS="{" ".join(map(str, OLD_TASKS))}"\\n'
     f'STEPS={STEPS}\\nBATCH={BATCH}\\nCIVD_LAMBDA={CIVD_LAMBDA}\\nCIVD_DISTILL_BS={CIVD_DISTILL_BS}\\n'
     f'EVAL_EPISODES={EVAL_EPISODES}\\nNAS={NAS}\\nSMOKE_STEPS={SMOKE_STEPS}\\nTRAIN_SEED={TRAIN_SEED}\\n'
-    + "".join(f'RUN{g}="{n} {m} {l}"\\n' for g, (n, m, l) in enumerate(RUNS)))
+    + "".join(f'RUN{g}="{" ".join(map(str, r))}"\\n' for g, r in enumerate(RUNS)))
 print(open("/tmp/params.sh").read())"""),
         *setup_cells(R, strict=True),
         ("code", f"""%%bash
@@ -530,7 +531,7 @@ cat > /tmp/train_one.sh <<'EOF'
 #!/usr/bin/env bash
 {VENV}
 source /tmp/params.sh
-GPU=$1; NAME=$2; N=$3; MODE=$4; LAM=${{5:-$CIVD_LAMBDA}}
+GPU=$1; NAME=$2; N=$3; MODE=$4; LAM=${{5:-$CIVD_LAMBDA}}; SEED=${{6:-$TRAIN_SEED}}
 # erK = SeqFT with K replayed episodes per old task; civderK = CIVD plus the same replay
 EPF=/tmp/cl_episodes.json
 case "$MODE" in
@@ -553,7 +554,7 @@ CUDA_VISIBLE_DEVICES=$GPU {PY} $ENTRY \\
   --policy.path=$BASE --policy.device=cuda --policy.push_to_hub=false --policy.train_expert_only=true \\
   --dataset.repo_id=lerobot/libero --dataset.revision=$(cat /tmp/ds_rev) "--dataset.episodes=$EPS" \\
   {RENAME} \\
-  --batch_size=$BATCH --steps=$N --save_freq=$N --log_freq=25 --seed=$TRAIN_SEED \\
+  --batch_size=$BATCH --steps=$N --save_freq=$N --log_freq=25 --seed=$SEED \\
   --output_dir=/tmp/cl/train_$NAME > {OUT}/train_$NAME.log 2>&1
 RC=$?
 kill $MON
@@ -597,17 +598,17 @@ chmod +x /tmp/eval_one.sh
 
 # Each GPU: train its method, then evaluate it on the new task first, then the old tasks
 run() {{
-  GPU=$1; NAME=$2; MODE=$3; LAM=$4
-  /tmp/train_one.sh $GPU $NAME $STEPS $MODE $LAM || return
+  GPU=$1; NAME=$2; MODE=$3; LAM=$4; SEED=${{5:-$TRAIN_SEED}}
+  /tmp/train_one.sh $GPU $NAME $STEPS $MODE $LAM $SEED || return
   CK=$(ls -d /tmp/cl/train_$NAME/checkpoints/*/pretrained_model | sort | tail -1)
   for T in $NEW_TASK $OLD_TASKS; do /tmp/eval_one.sh $GPU $CK $T ${{NAME}}_task$T; done
 }}
 START=$(date +%s)
 for G in 0 1; do
-  V=RUN$G; read NAME MODE LAM <<< "${{!V}}"
+  V=RUN$G; read NAME MODE LAM SEED <<< "${{!V}}"
   [ -z "$NAME" ] && continue
   if [ "$MODE" != "seqft" ] && [ -f /tmp/civd_failed ]; then continue; fi
-  run $G $NAME $MODE $LAM &
+  run $G $NAME $MODE $LAM $SEED &
 done
 wait
 echo "=== CL done in $(( ($(date +%s) - START) / 60 )) min" | tee -a {R}
@@ -621,7 +622,7 @@ p = {k: v.strip('"') for k, v in (l.strip().split("=", 1) for l in open("/tmp/pa
 new, old = int(p["NEW_TASK"]), [int(t) for t in p["OLD_TASKS"].split()]
 runs = [p[k].split() for k in ("RUN0", "RUN1") if p.get(k)]
 names = [r[0] for r in runs]
-labels = {r[0]: f"{r[0]} {r[1]}" + (f" λ={r[2]}" if "civd" in r[1] else "") for r in runs}
+labels = {r[0]: f"{r[0]} {r[1]}" + (f" λ={r[2]}" if "civd" in r[1] else "") + (f" seed {r[3]}" if len(r) > 3 else "") for r in runs}
 # Stage 0 = R1b (lerobot/smolvla_libero, n_action_steps 10, seed 1000, 10 episodes), measured in 02_r2_calibration
 R1B = {0: 10, 1: 10, 2: 8, 3: 6, 4: 9, 5: 10, 6: 7, 7: 9, 8: 10, 9: 9}
 
@@ -719,3 +720,14 @@ if __name__ == "__main__":
                 .replace("TRAIN_SEED = 1000 ", "TRAIN_SEED = 2000 ")) for a, c in run2]
     assert sum(x != y for x, y in zip(s2x, run2)) >= 1 and "TRAIN_SEED = 2000" in "".join(c for _, c in s2x)
     write("03_cl_seed2_ext", s2x)
+    # CIVD lambda = 0.1 with two more training seeds (2000 on GPU0, 3000 on GPU1): is the plasticity recovery stable?
+    l01 = [(a, c.replace('RUNS = [("m0", "seqft", 0.0), ("m3", "civd", CIVD_LAMBDA)]',
+                         'RUNS = [("m3l01s2", "civd", 0.1, 2000), ("m3l01s3", "civd", 0.1, 3000)]')) for a, c in run2]
+    assert l01 != run2
+    write("03_cl_lambda01_seeds", l01)
+    # Replay controls: M1 ER-1 without CIVD (seed 1000, GPU0) is the control for M4 = CIVD + ER-1;
+    # M2 ER-5 with a second training seed (2000, GPU1)
+    er2 = [(a, c.replace('RUNS = [("m0", "seqft", 0.0), ("m3", "civd", CIVD_LAMBDA)]',
+                         'RUNS = [("m1", "er1", 0.0, 1000), ("m2s2", "er5", 0.0, 2000)]')) for a, c in run2]
+    assert er2 != run2
+    write("03_cl_er_controls", er2)

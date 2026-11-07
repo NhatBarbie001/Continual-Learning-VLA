@@ -76,50 +76,69 @@ with open(TAB / "cl_resources.csv", "w", newline="", encoding="utf-8") as f:
     w.writerow(["cl_ablation_kaggle", "M3b new-instruction distillation", 1200, 8.03, None, None, "none"])
     w.writerow(["cl_er_kaggle", "M2 ER (5 ep/old task)", 1200, 4.71, 95, 5245, "45 demonstrations"])
     w.writerow(["cl_er_kaggle", "M4 CIVD + ER-tiny (1 ep/old task)", 1200, 8.69, 174, 7293, "9 demonstrations + 9 instruction strings"])
+    w.writerow(["cl_lambda_kaggle", "CIVD λ=0.1", 1200, 8.68, 174, 7391, "9 instruction strings"])
+    w.writerow(["cl_lambda_kaggle", "CIVD λ=0.03", 1200, 9.27, 186, 7391, "9 instruction strings"])
+    w.writerow(["cl_seed2_ext_kaggle", "M3b new-instruction distillation (seed 2000)", 1200, 8.05, 162, 7515, "none"])
+    w.writerow(["cl_seed2_ext_kaggle", "M4 CIVD + ER-tiny (seed 2000)", 1200, 8.22, 165, 7347, "9 demonstrations + 9 instruction strings"])
+    w.writerow(["cl_lambda01_seeds_kaggle", "CIVD λ=0.1 (seed 2000)", 1200, 8.61, 173, 7503, "9 instruction strings"])
+    w.writerow(["cl_lambda01_seeds_kaggle", "CIVD λ=0.1 (seed 3000)", 1200, 7.73, 155, 7399, "9 instruction strings"])
+    w.writerow(["cl_er_controls_kaggle", "M1 ER-1 (seed 1000)", 1200, 4.59, 92, 5329, "9 demonstrations"])
+    w.writerow(["cl_er_controls_kaggle", "M2 ER-5 (seed 2000)", 1200, 4.44, 89, 5245, "45 demonstrations"])
 
 
-# ---- figure: per-task success, main run (run 2 + seeds when present), SeqFT vs CIVD vs stage 0
-def norm(m):
-    m = m.lower()
-    return "SeqFT" if "seqft" in m else "CIVD" if ("civd" in m and "new" not in m and "0.3" not in m) else None
+# ---- figure: per-task success after one CL stage, mean of 3 training seeds: stage 0, SeqFT, CIVD λ = 1, CIVD λ = 0.1
+MAIN = ("cl_run2_kaggle", "cl_seed2_kaggle", "cl_seed3_kaggle")
 
 
-main = [r for r in runs if r[0] in ("cl_run2_kaggle", "cl_seed2_kaggle", "cl_seed3_kaggle") and norm(r[1])]
+def series(run, header):
+    h = header.lower()
+    if run in MAIN and "seqft" in h:
+        return "SeqFT"
+    if run in MAIN and "civd" in h:
+        return "CIVD λ = 1"
+    if (run == "cl_lambda_kaggle" and "λ=0.1" in h) or run == "cl_lambda01_seeds_kaggle":
+        return "CIVD λ = 0.1"
+    return None
+
+
+NAMES = ["SeqFT", "CIVD λ = 1", "CIVD λ = 0.1"]
+main = [(series(r[0], r[1]), r) for r in runs if series(r[0], r[1])]
 if main:
-    seeds = sorted({r[0] for r in main})
     order = [3, 8, 4, 6, 9, 2, 7, 0, 1, 5]
-    mean = {(meth, t): sum(r[5] for r in main if norm(r[1]) == meth and r[2] == t) /
-            max(1, sum(1 for r in main if norm(r[1]) == meth and r[2] == t)) for meth in ("SeqFT", "CIVD") for t in order}
+    mean, nseed = {}, {}
+    for meth in NAMES:
+        for t in order:
+            v = [r[5] for m, r in main if m == meth and r[2] == t]
+            mean[(meth, t)] = sum(v) / max(1, len(v))
+            nseed[meth] = len(v)
     INK, MUTED, GRID = "#1b2430", "#5b6676", "#e3e6ea"
-    COL = {"Stage 0": "#b9bec6", "SeqFT": "#eb6834", "CIVD": "#2a78d6"}
+    COL = {"Stage 0": "#b9bec6", "SeqFT": "#eb6834", "CIVD λ = 1": "#93bbea", "CIVD λ = 0.1": "#1d5fb4"}
     fig, ax = plt.subplots(figsize=(10, 4.2), dpi=200)
     x = list(range(len(order)))
-    bw = 0.26
-    for i, (name, vals) in enumerate([("Stage 0", [R1B[t] * 10 for t in order]),
-                                      ("SeqFT", [mean[("SeqFT", t)] * 10 for t in order]),
-                                      ("CIVD", [mean[("CIVD", t)] * 10 for t in order])]):
-        ax.bar([xi + (i - 1) * (bw + 0.02) for xi in x], vals, width=bw, color=COL[name], label=name, zorder=2)
+    bw = 0.2
+    groups = [("Stage 0", [R1B[t] * 10 for t in order])] + [(m, [mean[(m, t)] * 10 for t in order]) for m in NAMES]
+    for i, (name, vals) in enumerate(groups):
+        ax.bar([xi + (i - 1.5) * (bw + 0.015) for xi in x], vals, width=bw, color=COL[name], label=name, zorder=2)
     ax.axvline(0.5, color=MUTED, lw=0.8, ls=(0, (3, 3)))
     ax.set_xticks(x)
     import textwrap
     ax.set_xticklabels([("NEW · " if t == 3 else "") + f"task {t}\n" + "\n".join(textwrap.wrap(GOAL[t], 13)) for t in order],
                        fontsize=7.5, color=INK)
     for i, t in enumerate(order):   # zero-height bars are invisible: label them
-        if mean[("SeqFT", t)] == 0:
-            ax.text(i, 1.5, "0", ha="center", va="bottom", fontsize=8, color=MUTED)
+        for j, m in enumerate(NAMES, start=1):
+            if mean[(m, t)] == 0:
+                ax.text(i + (j - 1.5) * (bw + 0.015), 1.5, "0", ha="center", va="bottom", fontsize=7, color=MUTED)
     ax.set_ylabel("success (%)", color=MUTED, fontsize=9)
     ax.set_ylim(0, 105)
     ax.yaxis.grid(True, color=GRID, lw=0.8, zorder=0)
-    for s in ("top", "right", "left"):
-        ax.spines[s].set_visible(False)
+    for sp in ("top", "right", "left"):
+        ax.spines[sp].set_visible(False)
     ax.spines["bottom"].set_color(GRID)
     ax.tick_params(axis="y", colors=MUTED, labelsize=8, length=0)
     ax.tick_params(axis="x", length=0)
-    ax.legend(frameon=False, ncol=3, loc="upper right", bbox_to_anchor=(1, 1.13), fontsize=9)
-    n = len(seeds)
-    ax.set_title(f"Success per task after one CL stage · {n} training seed{'s' if n > 1 else ''}" + (" (mean)" if n > 1 else ""),
-                 loc="left", fontsize=10.5, color=INK, pad=22)
+    ax.legend(frameon=False, ncol=4, loc="upper right", bbox_to_anchor=(1, 1.13), fontsize=9)
+    ax.set_title("Success per task after one CL stage · mean of 3 training seeds", loc="left", fontsize=10.5, color=INK, pad=22)
     fig.tight_layout()
     fig.savefig(FIG / "cl_per_task.png")
-    print("figure:", FIG / "cl_per_task.png", "| runs:", seeds)
+    print("figure:", FIG / "cl_per_task.png", "| seeds per series:", nseed)
 print("tables:", sorted(p.name for p in TAB.glob("*.csv")), "| CL rows:", len(runs))

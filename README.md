@@ -19,17 +19,17 @@ Fine-tuning the model on each new task is the obvious approach, called **sequent
   - It plays the role that denoising plays in diffusion policies.
 - **[LIBERO](https://arxiv.org/abs/2306.03310)** is a simulated manipulation benchmark (MuJoCo) built for lifelong robot learning. It has four suites of 10 tasks each: Spatial, Object, Goal and Long.
   - In **LIBERO-Goal**, all 10 tasks share one scene and differ only in the instruction, such as "open the middle drawer" or "put the bowl on the stove".
-  - That property is what our method exploits.
+  - That property is what my method exploits.
 
-### What we did
+### What I did
 
-1. **Reproduce.** We evaluated the released SmolVLA LIBERO checkpoint with the released LeRobot code on all four suites (10 episodes × 10 tasks each).
-2. **Analyse.** We labelled every failed trajectory to see *how* SmolVLA fails, and *what* forgetting looks like after SeqFT.
-3. **Improve.** We propose **CIVD (Cross-Instruction Velocity Distillation)**, a CL method for flow-matching VLAs that stores **no old demonstrations**.
+1. **Reproduce.** I evaluated the released SmolVLA LIBERO checkpoint with the released LeRobot code on all four suites (10 episodes × 10 tasks each).
+2. **Analyse.** I labelled every failed trajectory to see *how* SmolVLA fails, and *what* forgetting looks like after SeqFT.
+3. **Improve.** I propose **CIVD (Cross-Instruction Velocity Distillation)**, a CL method for flow-matching VLAs that stores **no old demonstrations**.
 
 ### CIVD in one picture
 
-When the model learns a new task, we keep a frozen copy of the previous model (the *teacher*). We add one term to the training loss:
+When the model learns a new task, CIVD keeps a frozen copy of the previous model (the *teacher*). It adds one term to the training loss:
 
 ```
 L = L_flow-matching(new-task batch)
@@ -42,17 +42,18 @@ L = L_flow-matching(new-task batch)
 
 **Why no old data is needed.** In a shared scene, a new-task observation is also a valid observation for an old task. Asking the student to keep the teacher's velocity field under the old instructions on these observations therefore preserves the old behaviours.
 
-**Novelty.** Output distillation itself is not new (LwF, M2Distill). The new element is the **cross-instruction pairing**, which makes distillation exemplar-free for a flow-matching VLA. Our ablation shows this pairing is what does the work.
+**Novelty.** Output distillation itself is not new (LwF, M2Distill). The new element is the **cross-instruction pairing**, which makes distillation exemplar-free for a flow-matching VLA. My ablation shows this pairing is what does the work.
 
 ## Main results
 
 | Experiment | Result |
 |---|---|
 | **Reproduce** SmolVLA (`lerobot/smolvla_libero`, n_action_steps 10) | **83.3 %** average vs 87.3 % in the paper. Goal 88 (paper 92) and Long 76 (71) match; Spatial 82 (90) and Object 87 (96) are 8–9 pp lower |
-| **One CL stage** (stage-0 model learns LIBERO-Goal task 3 for 1200 steps; 9 old tasks evaluated) | Old-task success 91 % → **57 % with SeqFT** vs **84 % with CIVD**. Forgetting 34.1 ± 2.8 vs **6.7 ± 2.9 pp** over 3 seeds (Fisher p = 2.5·10⁻¹²) |
-| Price of CIVD at λ = 1 | No new-task gain (SeqFT 6 → 8/10 on average, CIVD stays at about 5/10); 1.8× training time; +2.1 GB GPU memory |
-| Ablation: distil with the **new** instruction instead (LwF-style) | Forgets like SeqFT (52 vs 74/90 old-task successes, p = 6·10⁻⁴). The cross-instruction pairing is the active ingredient |
-| Against replay (one seed) | ER with 5 stored demos per old task: 79/90. **CIVD + 1 demo per old task: 82/90, no forgetting**. Exemplar-free CIVD: 74/90 |
+| **One CL stage** (stage-0 model learns LIBERO-Goal task 3 for 1200 steps; 9 old tasks evaluated; 3 training seeds) | Old-task success 91 % → **57 % with SeqFT** vs **88 % with CIVD (λ = 0.1)**. Forgetting 34.1 ± 2.8 vs **3.0 ± 2.3 pp** (Fisher p = 3·10⁻¹⁶). **New task: 24/30 for both**, so CIVD keeps the full new-task gain |
+| Strength of the constraint | Retention is flat in λ (74–81/90 from λ = 1 to 0.03). At λ = 1 the new task is not learned (16/30); λ = 0.1, chosen on seed 1000, held on two fresh seeds |
+| Ablation: distil with the **new** instruction instead (LwF-style) | Forgets like SeqFT over 2 seeds (102 vs 100/180), far more than CIVD (153/180, p = 4·10⁻⁹). The cross-instruction pairing is the active ingredient |
+| Against replay | Storing 1 or 5 demos per old task also retains old tasks (Replay-1 78/90, Replay-5 79 · 76) but gives no new-task gain (6–7/10). Exemplar-free CIVD λ = 0.1 matches Replay-5's retention and keeps the gain |
+| Cost of CIVD | 9 stored instruction strings, 1.8× training time per step, +2.1 GB GPU memory (teacher); inference unchanged |
 
 ![Success per task after one CL stage (mean of 3 seeds)](assets/cl_per_task.png)
 
@@ -64,7 +65,7 @@ All numbers use 10 episodes per task and evaluation seed 1000. All experiments r
 
 `lerobot/smolvla_libero` (paper configuration), n_action_steps 10. Cells are successes out of 10 episodes.
 
-| Suite | T0 | T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9 | Ours (95 % Wilson CI) | Paper |
+| Suite | T0 | T1 | T2 | T3 | T4 | T5 | T6 | T7 | T8 | T9 | This work (95 % Wilson CI) | Paper |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Spatial | 10 | 9 | 10 | 10 | 8 | **1** | 9 | 8 | 7 | 10 | 82 % (73–88) | 90 % |
 | Object | 9 | 10 | 8 | 7 | 8 | 6 | 10 | 9 | 10 | 10 | 87 % (79–92) | 96 % |
@@ -72,7 +73,7 @@ All numbers use 10 episodes per task and evaluation seed 1000. All experiments r
 | Long | **4** | 9 | 9 | 10 | 5 | 10 | 5 | 9 | 6 | 9 | 76 % (67–83) | 71 % |
 | **Average** | | | | | | | | | | | **83.3 %** | **87.3 %** |
 
-- **Goal and Long match the paper:** the paper's score lies inside our 95 % CI.
+- **Goal and Long match the paper:** the paper's score lies inside my 95 % CI.
 - **Spatial and Object are 8–9 pp lower.** Likely causes are a public checkpoint that may differ from the paper model, bf16 weights on a T4 (no native bf16), and 360² rendering vs 256² training images.
 - **Spatial task 5 fails reproducibly** (1/10 in two independent runs).
 - **A second public checkpoint does worse:** `HuggingFaceVLA/smolvla_libero` (all VLM layers, 0.5× expert, n_action_steps 1) reaches only 76 % (67–83) on Goal.
@@ -101,55 +102,60 @@ Setup:
 - **Stage 1:** learn Goal task 3 (36 demos) for 1200 steps × batch 16, training only the action expert.
 - **Evaluation:** the new task and all 9 old tasks.
 
-Cells show the successes / 10 for training seeds 1000 · 2000 · 3000, and their sum out of 30.
+Cells are successes out of 30: 3 training seeds (1000, 2000, 3000) × 10 episodes.
 
-| Task | Stage 0 | SeqFT (per seed) | SeqFT Σ/30 | CIVD λ=1 (per seed) | CIVD Σ/30 | Fisher p |
-|---|---|---|---|---|---|---|
-| **3 (new)** drawer + bowl inside | 6 | 7 · 9 · 8 | **24** | 4 · 6 · 6 | 16 | 0.054 |
-| 8 bowl → plate | 10 | 2 · 5 · 5 | 12 | 9 · 10 · 10 | **29** | 3·10⁻⁶ |
-| 4 bowl → cabinet top | 9 | 5 · 5 · 8 | 18 | 10 · 10 · 10 | **30** | 1·10⁻⁴ |
-| 6 cream cheese → bowl | 7 | 0 · 2 · 1 | 3 | 5 · 6 · 6 | **17** | 3·10⁻⁴ |
-| 9 wine bottle → rack | 9 | 1 · 1 · 2 | 4 | 3 · 5 · 1 | 9 | 0.21 |
-| 2 wine bottle → cabinet top | 8 | 5 · 5 · 4 | 14 | 8 · 9 · 9 | **26** | 0.002 |
-| 7 turn on stove | 9 | 7 · 6 · 6 | 19 | 10 · 10 · 10 | **30** | 3·10⁻⁴ |
-| 0 open middle drawer | 10 | 10 · 10 · 10 | 30 | 9 · 10 · 10 | 29 | 1 |
-| 1 bowl → stove | 10 | 10 · 10 · 10 | 30 | 10 · 10 · 10 | 30 | 1 |
-| 5 push plate → stove | 10 | 9 · 7 · 8 | 24 | 10 · 9 · 9 | 28 | 0.25 |
-| **Old tasks** | **82/90** | 49 · 51 · 54 | **154/270 (57 %)** | 74 · 79 · 75 | **228/270 (84 %)** | **2.5·10⁻¹²** |
-| **Forgetting** (pp) ↓ | | 36.7 · 34.4 · 31.1 | **34.1 ± 2.8** | 8.9 · 3.3 · 7.8 | **6.7 ± 2.9** | |
-| **New-task gain** (pp) ↑ | | +10 · +30 · +20 | **+20 ± 10** | −20 · 0 · 0 | −7 ± 12 | |
+| Task | Stage 0 (/10) | SeqFT | CIVD λ = 1 | **CIVD λ = 0.1** | p (λ = 0.1 vs SeqFT) |
+|---|---|---|---|---|---|
+| **3 (new)** drawer + bowl inside | 6 | **24** | 16 | **24** | 1 |
+| 8 bowl → plate | 10 | 12 | 29 | **30** | 2·10⁻⁷ |
+| 4 bowl → cabinet top | 9 | 18 | 30 | **30** | 1·10⁻⁴ |
+| 6 cream cheese → bowl | 7 | 3 | 17 | **18** | 9·10⁻⁵ |
+| 9 wine bottle → rack | 9 | 4 | 9 | **15** | 0.005 |
+| 2 wine bottle → cabinet top | 8 | 14 | 26 | **29** | 2·10⁻⁵ |
+| 7 turn on stove | 9 | 19 | **30** | 27 | 0.03 |
+| 0 open middle drawer | 10 | 30 | 29 | 30 | 1 |
+| 1 bowl → stove | 10 | 30 | 30 | 30 | 1 |
+| 5 push plate → stove | 10 | 24 | 28 | **29** | 0.10 |
+| **Old tasks** (per seed) | **82/90** | 154/270 (49 · 51 · 54) | 228/270 (74 · 79 · 75) | **238/270 (77 · 80 · 81)** | **3·10⁻¹⁶** |
+| **Forgetting** (pp) ↓ | | 34.1 ± 2.8 | 6.7 ± 2.9 | **3.0 ± 2.3** | |
+| **New-task gain** (pp) ↑ | | **+20 ± 10** | −7 ± 12 | **+20 ± 10** | |
 
-Forgetting is stage-0 success minus success after the stage, averaged over the 9 old tasks. Fisher p is a two-sided exact test of SeqFT vs CIVD on pooled episodes.
+Forgetting is stage-0 success minus success after the stage, averaged over the 9 old tasks. ± is the std over seeds. p is a two-sided Fisher exact test on pooled episodes.
 
-- **CIVD removes about 80 % of the forgetting** and is better in every seed. Five of the nine old tasks differ at p < 0.003.
-- **At λ = 1 CIVD does not learn the new task.** It stays at the stage-0 level, which is the stability–plasticity trade-off.
+- **CIVD with λ = 0.1 removes about 90 % of the forgetting and learns the new task as well as SeqFT.** It is better than SeqFT in every seed.
+- **λ = 1 retains about as well but does not learn the new task.** This is the stability–plasticity trade-off, set by λ.
+- **About the choice of λ.** λ = 0.1 was picked from a sweep on seed 1000. Seeds 2000 and 3000 were run afterwards as a fresh confirmation: 7 and 8 on the new task, 80 and 81/90 on old tasks.
 - **Forgetting under SeqFT hits the object-placement tasks** (2, 4, 6, 8, 9). The drawer and stove tasks hold.
 
-### 4. Ablation and replay baselines (training seed 1000)
+### 4. Ablation, λ sweep and replay baselines
 
-| Method | Stored from old tasks | New task / 10 | Old tasks / 90 | Forgetting |
+One run of 1200 steps per value; seeds are listed in the second column. Seed-1000 references: SeqFT 7 (new) / 49 (old), CIVD λ = 1 4 / 74.
+
+| Method | Seeds | Stored from old tasks | New task / 10 | Old tasks / 90 |
 |---|---|---|---|---|
-| Stage 0 | — | 6 | 82 | — |
-| M0 SeqFT | nothing | 7 | 49 | 36.7 pp |
-| **M3 CIVD, λ = 1** | 9 instruction strings | 4 | **74** | 8.9 pp |
-| M3 CIVD, λ = 0.3 | 9 instruction strings | 6 | **74** | 8.9 pp |
-| M3b: distil with the *new* instruction | nothing | **9** | 52 | 33.3 pp |
-| M2 ER, 5 demos per old task | 45 demos | 7 | 79 | 3.3 pp |
-| **M4 CIVD + ER, 1 demo per old task** | 9 demos + 9 strings | 6 | **82** | **0 pp** |
+| Stage 0 | — | — | 6 | 82 |
+| CIVD λ = 1 · 0.3 · **0.1** · 0.03 | 1000 | 9 instruction strings | 4 · 6 · **9** · 6 | 74 · 74 · **77** · 77 |
+| **CIVD λ = 0.1** | 2000 · 3000 | 9 instruction strings | **7 · 8** | **80 · 81** |
+| CIVD w/o cross-instruction (λ = 1) | 1000 · 2000 | nothing | 9 · 6 | 52 · 50 |
+| Replay-1, 1 demo per old task | 1000 | 9 demos | 6 | 78 |
+| Replay-5, 5 demos per old task | 1000 · 2000 | 45 demos | 7 · 6 | 79 · 76 |
+| CIVD (λ = 1) + Replay-1 | 1000 · 2000 | 9 demos + 9 strings | 6 · 5 | 82 · 82 |
 
-- **Cross-instruction pairing is what works.** M3b has the same teacher, λ and cost as CIVD, but it forgets like SeqFT: 52 vs 49/90 (p = 0.76), against 74/90 for CIVD (p = 6·10⁻⁴).
-- **CIVD + 1 demo per old task matches ER with 5× more stored data:** 82 vs 79/90 (p = 0.63). Exemplar-free CIVD is close as well: 74 vs 79 (p = 0.40).
-- **Lowering λ to 0.3 keeps retention but does not restore the new-task gain.**
-- **Still running:** a λ sweep (0.1, 0.03) and a second seed for M3b and M4.
+- **Cross-instruction pairing is what works (2 seeds).** CIVD w/o cross-instruction has the same teacher, λ and cost as CIVD, but it forgets like SeqFT: 102 vs 100/180 (p = 0.92), against 153/180 for CIVD (p = 4·10⁻⁹).
+- **Retention is flat in λ:** 74–81/90 from λ = 1 down to λ = 0.03. The new-task score is noisier (4, 6, 9, 6), which is why λ = 0.1 was rerun on two more seeds.
+- **Replay retains but does not learn.**
+  - Even 1 stored demo per old task keeps 78/90, so CIVD + Replay-1 ≈ Replay-5 is mostly a replay effect (Replay-1 vs CIVD + Replay-1: 78 vs 82, p = 0.48).
+  - All replay runs stayed at 5–7/10 on the new task.
+  - Exemplar-free CIVD λ = 0.1 matches Replay-5's retention (157 vs 155/180 on seeds 1000 · 2000, p = 0.88) and keeps the new-task gain.
 
 ### 5. Resource cost (one T4, 1200 steps, batch 16, mean of 3 seeds)
 
-| | SeqFT | CIVD | ER-5 |
+| | SeqFT | CIVD | Replay-5 |
 |---|---|---|---|
 | Trainable parameters | ≈ 100M (action expert) | same | same |
 | Stored from old tasks | nothing | 9 instruction strings (< 1 KB) | 45 demonstrations (videos + states) |
-| Time per step | 4.86 s | 8.62 s (**1.77×**) | 4.71 s |
-| Wall time for the stage | 98 min | 173 min | 95 min |
+| Time per step | 4.86 s | 8.62 s at λ = 1, 8.34 s at λ = 0.1 (**≈ 1.8×**) | 4.6 s |
+| Wall time for the stage | 98 min | 155–182 min | 89–95 min |
 | Peak GPU memory | 5.3 GB | 7.4 GB (+2.1 GB teacher) | 5.2 GB |
 | Inference cost | unchanged | unchanged (teacher dropped) | unchanged |
 
@@ -163,7 +169,7 @@ scripts/                  run every experiment on a Linux machine with an NVIDIA
   common.sh               shared settings: paths, pinned LeRobot commit, camera rename map
   00_setup_env.sh         install system libs, a Python 3.12 venv, LeRobot @ ba83e4c with [smolvla,libero]
   01_eval_libero.sh       Reproduce: evaluate a checkpoint on a LIBERO suite
-  02_train_cl.sh          Improve: one CL stage with SeqFT / CIVD / M3b / ER / CIVD+ER
+  02_train_cl.sh          Improve: one CL stage with SeqFT / CIVD / CIVD w/o cross-instruction / Replay / CIVD + Replay
   03_eval_cl.sh           Improve: evaluate CL checkpoints on the new task and all old tasks
   run_cl.sh               02 + 03 end to end; its header lists the command of every reported run
 analysis/
@@ -172,24 +178,30 @@ analysis/
   summarize_cl.py         one CL stage: success per task, new-task gain, forgetting vs stage 0
   compare_runs.py         pool runs across seeds, Fisher exact tests, forgetting mean ± std
   make_tables.py          result tables (CSV) and the figure above
+  make_demo.py            side-by-side demo video (SeqFT vs CIVD, same initial states) from the eval rollouts
 kaggle/                   the Kaggle notebooks that produced every number above
   build_notebooks.py      generates all notebooks (single source of truth)
   kgl.sh                  push / status / logs / output around the Kaggle CLI
   libero_goal_episodes.json   LIBERO-Goal task → episodes in lerobot/libero @ a1aaacb
   00_smoke_test, 01_r1_eval, 02_r2_calibration, 03_cl, 03_cl_run2, 03_cl_seed2, 03_cl_seed3,
-  03_cl_ablation, 03_cl_er, 03_cl_lambda, 03_cl_seed2_ext
+  03_cl_ablation, 03_cl_er, 03_cl_lambda, 03_cl_seed2_ext, 03_cl_lambda01_seeds, 03_cl_er_controls
+                          (RUNS at the top of each notebook: one (name, mode, λ[, seed]) per GPU)
 assets/                   figure used in this README
+SETUP.md                  environment, Kaggle notes and differences from the paper
+docs/pipeline.md          SmolVLA pipeline traced through the LeRobot source (file:line references, Vietnamese)
 ```
 
 **Method names used in the code and the report:**
 
-| ID | Name | What it does |
+| Name in the report | `MODE` in the code | What it does |
 |---|---|---|
-| M0 | SeqFT | Plain fine-tuning on the new task |
-| M3 | CIVD | SeqFT plus distillation on new-task observations paired with old instructions |
-| M3b | Ablation | Same as M3, but distilled with the new instruction |
-| M2 | ER | SeqFT plus K stored demos per old task |
-| M4 | CIVD + ER | CIVD plus K stored demos per old task |
+| SeqFT (fine-tuning) | `seqft` | Plain fine-tuning on the new task |
+| CIVD | `civd` | SeqFT plus distillation on new-task observations paired with old instructions |
+| CIVD w/o cross-instruction | `civdnew` | Ablation: same as CIVD, but distilled with the new task's own instruction (LwF-style) |
+| Replay-1 / Replay-5 | `er1` / `er5` | SeqFT plus 1 / 5 stored demos per old task |
+| CIVD + Replay-1 | `civder1` | CIVD plus 1 stored demo per old task |
+
+Reproduction runs: **paper-config checkpoint** = `lerobot/smolvla_libero` (n_action_steps 10, the main reproduction), **alternative checkpoint** = `HuggingFaceVLA/smolvla_libero` (n_action_steps 1). Older folder names in `results/` and notebook names keep short internal tags (`r1` = alternative checkpoint, `r1b` = paper-config checkpoint, `r2` = fine-tuning cost test, `r3` = action-chunk length test).
 
 ## How to run
 
@@ -237,7 +249,7 @@ python analysis/make_tables.py                      # reads results/ (or $RESULT
 ```bash
 export CIVD_TEACHER=lerobot/smolvla_libero          # frozen previous-stage model
 export CIVD_OLD_TASKS="open the middle drawer of the cabinet|put the bowl on the stove|..."
-export CIVD_LAMBDA=1.0 CIVD_DISTILL_BS=4 CIVD_MODE=old   # CIVD_MODE=new → M3b ablation
+export CIVD_LAMBDA=1.0 CIVD_DISTILL_BS=4 CIVD_MODE=old   # CIVD_MODE=new → CIVD w/o cross-instruction (ablation)
 python civd/civd.py <any lerobot_train arguments>
 ```
 
@@ -251,7 +263,7 @@ python civd/civd.py <any lerobot_train arguments>
 - **Scope.**
   - The CL experiments cover one stage on LIBERO-Goal.
   - CIVD needs old tasks to share the observation space of the new data. That holds in LIBERO-Goal but not across scenes.
-  - At λ = 1, CIVD gives up the new-task gain; recovering plasticity (smaller or annealed λ) is open.
+  - λ = 0.1 was chosen on one seed and confirmed on two more, not tuned on a separate validation stream. A multi-stage stream is the next test.
 - **What was tested.**
   - The notebooks in `kaggle/` produced every reported number.
   - `scripts/` reproduces the same commands outside Kaggle. Its syntax and episode selection were checked, but it has not been run end to end on a non-Kaggle machine.
